@@ -64,7 +64,7 @@ module.exports = function(prop, opts){
             return arr;
         }, []);
 
-        return createUniqueSlug(mySlug, slugArr, 1);
+        return createUniqueSlug(mySlug, slugArr, 2);
     };
 
     schema.pre('save', function(next){

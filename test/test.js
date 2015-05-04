@@ -21,16 +21,24 @@ var Person = model('Person', personSchema);
 var uniqueSchema = schema({title: String, foo: String}).plugin(slug(null,{unique: true}));
 var Unique = model('Unique', uniqueSchema);
 
+var uniqueCustomSchema = schema({foo: String, bar: String}).plugin(slug(['foo','bar'],{unique: true}));
+var uniqueCustom = model('UniqueCustom', uniqueCustomSchema);
+
 describe('mongoose-slug', function(){
 
   before(function(done){
     mongoose.connect(to);
 
+    // TODO 
+    // refactor this cleaning
+    
     model('Artist').remove({}, function(){
         model('Thing').remove({}, function(){
             model('Person').remove({}, function(){
                 model('Unique').remove({}, function(){
-                    done(); 
+                    model('UniqueCustom').remove({}, function(){
+                        done(); 
+                    });
                 });
             });
         });
@@ -82,21 +90,31 @@ describe('mongoose-slug', function(){
             if(err){
                 console.log(err);
             } 
-            unique.slug.should.eql('test-title-1');
+            unique.slug.should.eql('test-title-2');
             done();
         });
 
     });
   });
 
-  //after(function(done){
-  //  model('Artist').remove({
-  //    title: 'some artist'
-  //  }, function () {
-  //    model('Person').remove({
-  //      name: 'John Doe'
-  //    }, done)
-  //  });
-  //});
+  it('should create a unique slug from custom field', function(done){
 
+    new uniqueCustom({foo: 'Foo', bar: 'Bar'})
+    .save(function(err, doc){
+        if(err){
+            console.log(err);
+        } 
+        doc.slug.should.eql('foo-bar');
+
+        new uniqueCustom({foo: 'Foo', bar: 'Bar'})
+        .save(function(err, unique){
+            if(err){
+                console.log(err);
+            } 
+            unique.slug.should.eql('foo-bar-2');
+            done();
+        });
+
+    });
+  });
 });
