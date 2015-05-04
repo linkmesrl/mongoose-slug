@@ -1,20 +1,43 @@
+'use strict';
 
-var mongoose = require('mongoose')
-  , should = require('should')
-  , Schema = mongoose.Schema
-  , model = mongoose.model.bind(mongoose)
-  , slug = require('..')
-  , to = require('./db');
+var mongoose = require('mongoose');
+var should = require('should');
+var schema = mongoose.Schema;
+var model = mongoose.model.bind(mongoose);
+var slug = require('..');
+var to = require('./db');
+
+// Defining models
+    
+var artistSchema = schema({ title: String, baz: String }).plugin(slug());
+var Artist = model('Artist', artistSchema);
+
+var thingSchema = schema({ title: String, baz: String }).plugin(slug());
+var Thing = model('Thing', thingSchema);
+
+var personSchema = schema({ name: String, occupation: String }).plugin(slug(['name', 'occupation']));
+var Person = model('Person', personSchema);
+
+var uniqueSchema = schema({title: String, foo: String}).plugin(slug(null,{unique: true}));
+var Unique = model('Unique', uniqueSchema);
 
 describe('mongoose-slug', function(){
 
-  before(function(){
+  before(function(done){
     mongoose.connect(to);
+
+    model('Artist').remove({}, function(){
+        model('Thing').remove({}, function(){
+            model('Person').remove({}, function(){
+                model('Unique').remove({}, function(){
+                    done(); 
+                });
+            });
+        });
+    });
   });
 
   it('should create the slug with default source property(title)', function(done){
-    var schema = Schema({ title: String, baz: String }).plugin(slug())
-    , Artist = model('Artist', schema);
   
     new Artist({ title: 'some artist'})
     .save(function(err, doc){
@@ -26,8 +49,6 @@ describe('mongoose-slug', function(){
   });
 
   it('should create the slug with utf8 converted into latin chars', function(done){
-    var schema = Schema({ title: String, baz: String }).plugin(slug())
-    , Thing = model('Thing', schema);
   
     new Thing({ title: 'Schöner Titel läßt grüßen!? Bel été !'})
     .save(function(err, doc){
@@ -39,8 +60,6 @@ describe('mongoose-slug', function(){
   });
 
   it('should create the slug with multiple source property', function(done){
-    var personSchema = Schema({ name: String, occupation: String }).plugin(slug(['name', 'occupation']))
-    , Person = model('Person', personSchema);
   
     new Person({ name: 'John Doe', occupation: 'Scam Artist'})
     .save(function(err, doc){
@@ -52,14 +71,32 @@ describe('mongoose-slug', function(){
     });
   });
 
-  after(function(done){
-    model('Artist').remove({
-      title: 'some artist'
-    }, function () {
-      model('Person').remove({
-        name: 'John Doe'
-      }, done)
+  it('should create a unique slug', function(done){
+
+    new Unique({title: 'Test Title'})
+    .save(function(err, doc){
+        doc.slug.should.eql('test-title');
+
+        new Unique({title: 'Test Title'})
+        .save(function(err, unique){
+            if(err){
+                console.log(err);
+            } 
+            unique.slug.should.eql('test-title-1');
+            done();
+        });
+
     });
   });
+
+  //after(function(done){
+  //  model('Artist').remove({
+  //    title: 'some artist'
+  //  }, function () {
+  //    model('Person').remove({
+  //      name: 'John Doe'
+  //    }, done)
+  //  });
+  //});
 
 });

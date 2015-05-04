@@ -1,4 +1,4 @@
-
+'use strict';
 /**
  * deps
  */
@@ -17,6 +17,7 @@ var slug = require('speakingurl');
  *      - `.replace` characters to replace defaulted to `[^a-zA-Z]`
  *      - `.separator` separator to use, defaulted to `-`
  *      - `required` whether a slug is required, defaults to `true`
+ *      - `unique` whether the slug should be unique, defaults to `false`
  *
  * @param {String} prop
  * @param {Object} options
@@ -24,7 +25,10 @@ var slug = require('speakingurl');
  */
 
 module.exports = function(prop, opts){
-  return (function slugize(schema){
+  return function slugize(schema){
+
+    var unique = (opts && opts.unique) ? true : false;
+
     var title;
     schema.add({
       slug: {
@@ -36,6 +40,32 @@ module.exports = function(prop, opts){
     if (opts && opts.track) {
       schema.add({ slugs: [ String ] });
     }
+
+    var createUniqueSlug = function(baseSlug, slugArr, i){
+        var mySlug = baseSlug + '-' + i;
+        if(slugArr.indexOf(mySlug) === -1){
+            return mySlug;
+        }
+        return createUniqueSlug(baseSlug, slugArr, i++);
+    };
+
+    var findUniqueSlug = function(models, mySlug){
+        //if no model have the same slug return
+        if(models.length === 0){
+            return mySlug;
+        }
+
+        // get an array of unique slug
+        var slugArr = models.reduce(function(arr, current){
+            if(arr.indexOf(current.slug) === -1){
+                arr.push(current.slug);
+                return arr;
+            }
+            return arr;
+        }, []);
+
+        return createUniqueSlug(mySlug, slugArr, 1);
+    };
 
     schema.pre('save', function(next){
       var self = this;
@@ -50,16 +80,32 @@ module.exports = function(prop, opts){
         title = this[prop || 'title'];
       }
 
-      var require = (opts && opts.required === false) ? false : true
-        , presets = (opts && opts.override) ? true : false;
+      var require = (opts && opts.required === false) ? false : true;
 
-      if (require && !title) return next(new Error(prop + ' is required to create a slug'));
+      if (require && !title) {
+        return next(new Error(prop + ' is required to create a slug'));
+      }
 
       var mySlug = slug(title, opts);
-      if (opts && opts.track && self.slugs && self.slugs.indexOf( mySlug) == -1) self.slugs.push( mySlug );
-      if (title && !self.slug) self.slug = mySlug;
+      if (opts && opts.track && self.slugs && self.slugs.indexOf( mySlug) === -1){
+          self.slugs.push( mySlug );
+      }
 
-      next();
+      if (title && !self.slug){
+        self.slug = mySlug;
+      }
+    
+      if(unique){
+      
+        this.constructor.find({slug: self.slug}, function(err, models){
+           self.slug = findUniqueSlug(models, self.slug); 
+            next();
+        });
+      }
+      else{
+        next();
+      }
+
     });
-  });
+  };
 };
