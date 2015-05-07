@@ -14,7 +14,8 @@
   },
   "devDependencies": {
     "mocha": "*",
-    "should": "*",
-    "mongoose": "*"
+    "mockgoose": "^2.0.1",
+    "mongoose": "*",
+    "should": "*"
   }
 }

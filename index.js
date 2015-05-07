@@ -41,32 +41,6 @@ module.exports = function(prop, opts){
       schema.add({ slugs: [ String ] });
     }
 
-    var createUniqueSlug = function(baseSlug, slugArr, i){
-        var mySlug = baseSlug + '-' + i;
-        if(slugArr.indexOf(mySlug) === -1){
-            return mySlug;
-        }
-        return createUniqueSlug(baseSlug, slugArr, i++);
-    };
-
-    var findUniqueSlug = function(models, mySlug){
-        //if no model have the same slug return
-        if(models.length === 0){
-            return mySlug;
-        }
-
-        // get an array of unique slug
-        var slugArr = models.reduce(function(arr, current){
-            if(arr.indexOf(current.slug) === -1){
-                arr.push(current.slug);
-                return arr;
-            }
-            return arr;
-        }, []);
-
-        return createUniqueSlug(mySlug, slugArr, 2);
-    };
-
     schema.pre('save', function(next){
       var self = this;
 
@@ -87,6 +61,12 @@ module.exports = function(prop, opts){
       }
 
       var mySlug = slug(title, opts);
+      var isChanged = self.isNew || (self.slug !== mySlug);
+
+      if(!isChanged){
+        return next();
+      }
+
       if (opts && opts.track && self.slugs && self.slugs.indexOf( mySlug) === -1){
           self.slugs.push( mySlug );
       }
@@ -97,8 +77,10 @@ module.exports = function(prop, opts){
     
       if(unique){
       
-        this.constructor.find({slug: self.slug}, function(err, models){
-           self.slug = findUniqueSlug(models, self.slug); 
+        this.constructor.count({slug: self.slug}, function(err, number){
+            if(number >= 1 && self.isNew){
+               self.slug = self.slug + '-' + number; 
+            }
             next();
         });
       }

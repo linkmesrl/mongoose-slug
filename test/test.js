@@ -90,10 +90,24 @@ describe('mongoose-slug', function(){
             if(err){
                 console.log(err);
             } 
-            unique.slug.should.eql('test-title-2');
+            unique.slug.should.eql('test-title-1');
             done();
         });
 
+    });
+  });
+
+  it('should not change the slug when updating document with unchanged title', function(done){
+    new Unique({title: 'Title'})
+    .save(function(err, doc){
+        doc.slug.should.eql('title');
+
+          Unique.findOne({title: 'Title'}, function(err, doc){
+            doc.save(function(err, newDoc){
+                newDoc.slug.should.eql('title');
+                done();
+            });
+          });
     });
   });
 
@@ -111,7 +125,7 @@ describe('mongoose-slug', function(){
             if(err){
                 console.log(err);
             } 
-            unique.slug.should.eql('foo-bar-2');
+            unique.slug.should.eql('foo-bar-1');
             done();
         });
 
